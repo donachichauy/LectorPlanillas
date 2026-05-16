@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Lector de Planillas — GanaderíaApp</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --gd:#1b2e1b;--gm:#3B6D11;--gl:#EAF3DE;--ga:#C0DD97;--gg:#639922;
+  --am:#FAEEDA;--ad:#854F0B;
+  --rd:#A32D2D;--rl:#FCEBEB;
+  --bd:#1565C0;--bl:#E6F1FB;
+  --txt:#1a2e1a;--txt2:#5a5854;--txt3:#8a8880;
+  --card:#fff;--bg:#f0ede6;--brd:#ddd9d0;--brdf:#ece8e0;
+  --rad:10px;--rad2:16px;--shadow:0 2px 10px rgba(0,0,0,.08);
+}
+html,body{min-height:100vh;font-family:'Segoe UI',system-ui,sans-serif;
+  background:var(--bg);color:var(--txt);font-size:15px}
+.app{max-width:980px;margin:0 auto;padding:20px 16px 50px}
+
+/* ── HEADER ── */
+.app-hdr{background:var(--gd);border-radius:var(--rad2);padding:16px 22px;
+  margin-bottom:22px;display:flex;align-items:center;gap:14px}
+.logo-gg{font-size:22px;font-weight:900;background:var(--gl);color:var(--gd);
+  padding:5px 11px;border-radius:9px;letter-spacing:-1px;flex-shrink:0}
+.app-hdr h1{font-size:17px;font-weight:700;color:#e4f0d4;margin-bottom:2px}
+.app-hdr p{font-size:11px;color:rgba(200,220,180,.5);letter-spacing:.5px}
+
+/* ── CARD ── */
+.card{background:var(--card);border:1px solid var(--brdf);
+  border-radius:var(--rad2);box-shadow:var(--shadow);margin-bottom:16px;overflow:hidden}
+.card-hdr{padding:12px 18px;border-bottom:1px solid var(--brdf);
+  display:flex;align-items:center;justify-content:space-between;background:#faf9f6}
+.card-hdr h2{font-size:13.5px;font-weight:700;color:var(--txt)}
+.step-n{background:var(--gm);color:#e4f0d4;font-size:11px;font-weight:700;
+  padding:2px 10px;border-radius:20px}
+.card-body{padding:16px 18px}
+
+/* ── TYPE SELECTOR ── */
+.types{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.t-btn{border:2px solid var(--brd);border-radius:var(--rad);padding:12px 8px;
+  cursor:pointer;text-align:center;transition:all .13s;background:#fafaf8;user-select:none}
+.t-btn:hover{border-color:var(--gm);background:var(--gl)}
+.t-btn.on{border-color:var(--gm);background:var(--gl);box-shadow:0 0 0 3px rgba(59,109,17,.12)}
+.t-btn .ico{font-size:20px;margin-bottom:5px}
+.t-btn .nm{font-size:12px;font-weight:700;color:var(--txt)}
+.t-btn .sb{font-size:10px;color:var(--txt3);margin-top:1px}
+
+/* ── API KEY ── */
+.key-row{display:flex;gap:8px;align-items:stretch}
+.key-row input{flex:1;padding:9px 12px;border:1.5px solid var(--brd);
+  border-radius:var(--rad);font-size:13px;font-family:inherit}
+.key-row input:focus{outline:none;border-color:var(--gm)}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:var(--rad);
+  font-size:13.5px;font-weight:700;cursor:pointer;border:none;font-family:inherit;transition:all .13s}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-p{background:var(--gm);color:#e4f0d4}.btn-p:not(:disabled):hover{background:var(--gd)}
+.btn-s{background:transparent;border:1.5px solid var(--brd);color:var(--txt2)}
+.btn-s:hover{background:var(--bg)}
+.btn-xls{background:#1d6f42;color:#fff}.btn-xls:not(:disabled):hover{background:#155231}
+.btn-sm{padding:6px 13px;font-size:12px}
+.btn-cam{background:var(--gm);color:#e4f0d4;border-radius:var(--rad);padding:10px 18px;
+  font-size:13px;font-weight:700;cursor:pointer;border:none;font-family:inherit;display:inline-flex;align-items:center;gap:6px}
+
+/* ── DROP ZONE ── */
+.dz{border:2px dashed var(--brd);border-radius:var(--rad2);padding:28px 20px;
+  text-align:center;cursor:pointer;transition:all .13s;background:#fafaf8;position:relative}
+.dz:hover,.dz.drag{border-color:var(--gm);background:var(--gl)}
+.dz input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+.dz .dz-ico{font-size:36px;opacity:.3;margin-bottom:8px}
+.dz h3{font-size:14px;color:var(--txt2);margin-bottom:3px}
+.dz p{font-size:12px;color:var(--txt3)}
+
+/* ── THUMBS ── */
+.thumbs{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.thumb{position:relative;border-radius:8px;overflow:hidden;border:1px solid var(--brd)}
+.thumb img{display:block;width:110px;height:82px;object-fit:cover}
+.thumb .rm{position:absolute;top:3px;right:3px;background:rgba(163,45,45,.85);color:#fff;
+  border:none;border-radius:50%;width:20px;height:20px;font-size:13px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center}
+
+/* ── ALERTS ── */
+.alert{padding:10px 14px;border-radius:var(--rad);font-size:13px;margin-bottom:10px}
+.a-ok{background:var(--gl);color:var(--gd);border:1px solid var(--ga)}
+.a-err{background:var(--rl);color:var(--rd);border:1px solid #F7C1C1}
+.a-info{background:var(--bl);color:var(--bd);border:1px solid #B5D4F4}
+.a-warn{background:var(--am);color:var(--ad);border:1px solid #FAC775}
+
+/* ── PROGRESS ── */
+.prog{background:var(--brdf);border-radius:20px;height:7px;overflow:hidden;margin:12px 0}
+.prog-bar{height:100%;border-radius:20px;
+  background:linear-gradient(90deg,var(--gm),var(--ga));transition:width .35s}
+.proc-lbl{text-align:center;font-size:12.5px;color:var(--txt3);margin-top:4px;min-height:18px}
+
+/* ── RESULT TABLE ── */
+.rtbl-wrap{overflow-x:auto;border:1px solid var(--brdf);border-radius:var(--rad);margin:10px 0}
+.rtbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.rtbl th{padding:7px 9px;text-align:left;font-size:10px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.5px;color:#e4f0d4;background:var(--gd);white-space:nowrap}
+.rtbl td{padding:5px 8px;border-bottom:1px solid var(--brdf);vertical-align:middle}
+.rtbl tr:last-child td{border-bottom:none}
+.rtbl tr:nth-child(even) td{background:#faf8f4}
+.rtbl td input,.rtbl td select{width:100%;border:1px solid var(--brd);border-radius:5px;
+  padding:4px 7px;font-size:12px;background:#fafaf8;font-family:inherit}
+.rtbl td input:focus,.rtbl td select:focus{outline:none;border-color:var(--gm)}
+.rtbl .res-parto{color:var(--gm);font-weight:700}
+.rtbl .res-muerto{color:var(--rd);font-weight:700}
+.rtbl .res-nop{color:var(--txt2);font-weight:700}
+.rtbl .res-pend{color:var(--ad)}
+
+/* ── ENCABEZADO SUMMARY ── */
+.enc-box{background:var(--gl);border:1px solid var(--ga);border-radius:var(--rad);
+  padding:10px 14px;margin-bottom:10px;display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px 14px}
+.enc-box .ef{display:flex;gap:5px;font-size:12.5px}
+.enc-box .ef b{color:var(--gd);white-space:nowrap}
+
+/* ── DL BAR ── */
+.dl-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px;
+  background:var(--gl);border-radius:var(--rad);border:1px solid var(--ga);margin-top:14px}
+.dl-bar p{flex:1;font-size:12.5px;color:var(--gd)}
+.dl-bar p b{display:block;font-size:13px;margin-bottom:2px}
+
+/* ── MOBILE ── */
+@media(max-width:600px){
+  .types{grid-template-columns:repeat(3,1fr)}
+  .app{padding:10px 10px 40px}
+  .app-hdr{flex-direction:column;text-align:center}
+  .key-row{flex-direction:column}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- HEADER -->
+<div class="app-hdr">
+  <div class="logo-gg">GG</div>
+  <div>
+    <h1>Lector de Planillas de Campo</h1>
+    <p>GANADERÍA APP · DIGITALIZACIÓN INTELIGENTE CON IA</p>
+  </div>
+</div>
+
+<!-- PASO 0: API KEY -->
+<div class="card">
+  <div class="card-hdr"><h2>🔑 Clave API de Claude</h2><span class="step-n">Configuración</span></div>
+  <div class="card-body">
+    <div class="alert a-info" style="margin-bottom:12px">
+      Esta app usa Claude Vision (Anthropic) para leer las planillas. Ingrese su clave API.
+      Obténgala en <b>console.anthropic.com</b> → API Keys. Se guarda solo en su dispositivo.
+    </div>
+    <div class="key-row">
+      <input type="password" id="api-key" placeholder="sk-ant-api03-..." autocomplete="off">
+      <button class="btn btn-p btn-sm" onclick="saveKey()">Guardar</button>
+      <button class="btn btn-s btn-sm" onclick="toggleVis()">👁</button>
+    </div>
+    <div id="key-st" style="margin-top:6px;font-size:12px"></div>
+  </div>
+</div>
+
+<!-- PASO 1: TIPO -->
+<div class="card">
+  <div class="card-hdr"><h2>Paso 1 — Tipo de planilla</h2><span class="step-n">1</span></div>
+  <div class="card-body">
+    <div class="types" id="types">
+      <div class="t-btn on" data-t="animales" onclick="selType(this)">
+        <div class="ico">◎</div><div class="nm">Animales</div><div class="sb">Alta de rodeo</div>
+      </div>
+      <div class="t-btn" data-t="nacimientos" onclick="selType(this)">
+        <div class="ico">◌</div><div class="nm">Nacimientos</div><div class="sb">Cría / Partos</div>
+      </div>
+      <div class="t-btn" data-t="entore" onclick="selType(this)">
+        <div class="ico">⊗</div><div class="nm">Entore</div><div class="sb">Resultado parición</div>
+      </div>
+      <div class="t-btn" data-t="vacunacion" onclick="selType(this)">
+        <div class="ico">⊛</div><div class="nm">Vacunación</div><div class="sb">Lotes sanidad</div>
+      </div>
+      <div class="t-btn" data-t="ventas" onclick="selType(this)">
+        <div class="ico">⊠</div><div class="nm">Ventas</div><div class="sb">Registro ventas</div>
+      </div>
+      <div class="t-btn" data-t="manejo" onclick="selType(this)">
+        <div class="ico">⇄</div><div class="nm">Manejo</div><div class="sb">Cambio de campo</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PASO 2: FOTO -->
+<div class="card">
+  <div class="card-hdr"><h2>Paso 2 — Foto de la planilla</h2><span class="step-n">2</span></div>
+  <div class="card-body">
+    <div class="dz" id="dz"
+         ondragover="event.preventDefault();this.classList.add('drag')"
+         ondragleave="this.classList.remove('drag')"
+         ondrop="onDrop(event)">
+      <input type="file" id="fi" accept="image/*" multiple onchange="onFiles(this.files)">
+      <div class="dz-ico">📷</div>
+      <h3>Arrastre la foto aquí o haga clic para seleccionar</h3>
+      <p>JPG · PNG · WEBP · Puede subir varias páginas de la misma planilla</p>
+    </div>
+    <div style="text-align:center;margin-top:10px">
+      <label class="btn-cam">
+        <input type="file" accept="image/*" capture="environment" style="display:none" onchange="onFiles(this.files)">
+        📸 Tomar foto con la cámara
+      </label>
+    </div>
+    <div class="thumbs" id="thumbs"></div>
+  </div>
+</div>
+
+<!-- PASO 3: PROCESAR -->
+<div class="card">
+  <div class="card-hdr"><h2>Paso 3 — Analizar con IA</h2><span class="step-n">3</span></div>
+  <div class="card-body" style="text-align:center">
+    <button class="btn btn-p" id="proc-btn" onclick="process()" disabled>
+      🤖 Leer planilla y extraer datos
+    </button>
+    <div class="prog" id="prog" style="display:none;max-width:500px;margin:12px auto 0">
+      <div class="prog-bar" id="prog-bar" style="width:0%"></div>
+    </div>
+    <div class="proc-lbl" id="proc-lbl"></div>
+  </div>
+</div>
+
+<!-- RESULTADO -->
+<div class="card" id="res-card" style="display:none">
+  <div class="card-hdr">
+    <h2>📊 Datos extraídos — revisar y descargar</h2>
+    <div style="display:flex;gap:7px">
+      <button class="btn btn-s btn-sm" onclick="clearAll()">Limpiar</button>
+      <button class="btn btn-xls btn-sm" onclick="dlExcel()">⬇ Excel</button>
+    </div>
+  </div>
+  <div class="card-body">
+    <div id="res-alert"></div>
+    <div id="res-enc"></div>
+    <div id="res-summary" style="font-size:13px;color:var(--txt2);margin-bottom:8px"></div>
+    <div id="res-tbl"></div>
+    <div class="dl-bar">
+      <p><b>📂 Planilla Excel lista para importar</b>
+        Descargue el archivo y súbalo en GanaderíaApp → sección correspondiente → Importar Excel</p>
+      <button class="btn btn-xls" onclick="dlExcel()">⬇ Descargar Excel</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /app -->
+<script>
+// ── STATE ─────────────────────────────────────────────────────────────────────
+var selT = 'animales';
+var photos = [];   // [{dataUrl, base64, mediaType}]
+var extracted = null;
+var apiKey = '';
+
+// ── SCHEMAS ───────────────────────────────────────────────────────────────────
+var SCH = {
+  animales:{
+    title:'Registro de Animales',
+    sheetName:'Animales',
+    cols:['caravana','categoria','raza','campo','anio_nac','sexo','marca','peso','observaciones'],
+    hdrs:['N° Caravana','Categoría','Raza','Campo Asignado','Año Nac.','Sexo M/H','Marca','Peso (kg)','Observaciones'],
+    type:'array',
+    prompt:`Eres un sistema de gestión ganadera leyendo una PLANILLA DE CAMPO de registro de animales.
+Extrae TODOS los animales con datos. Retorna SOLO JSON array, sin texto adicional:
+[{"caravana":"","categoria":"","raza":"","campo":"","anio_nac":"","sexo":"","marca":"","peso":"","observaciones":""}]
+Categorías válidas: Vaca de Cría, Vaca de Invernada, Ternero/a, Vaquillona 1-2, Vaquillona +2, Novillo 1-2, Novillo +2, Novillo Sobre Año, Novillo -1 Año, Toro.
+Abreviaturas: VC=Vaca de Cría, VI=Vaca de Invernada, T=Ternero/a, V1=Vaquillona 1-2, V2=Vaquillona +2, N1=Novillo 1-2, N2=Novillo +2, NS=Novillo Sobre Año, TO=Toro.
+Sexo: M=Macho, H=Hembra. Año nacimiento: 4 dígitos. No incluyas filas vacías.`
+  },
+  nacimientos:{
+    title:'Registro de Nacimientos / Cría',
+    sheetName:'Nacimientos',
+    cols:['fecha_nacimiento','sexo','caravana_madre','caravana_padre','peso_nac','caravana_cria','marca_cria','campo_madre','observaciones'],
+    hdrs:['Fecha Nacimiento','Sexo M/H','Caravana Madre','Caravana Padre','Peso Nac. (kg)','Caravana Cría','Marca Cría','Campo Madre','Observaciones'],
+    type:'array',
+    prompt:`Leyendo PLANILLA DE CAMPO de nacimientos/cría ganadera.
+Extrae TODOS los nacimientos con datos. Retorna SOLO JSON array:
+[{"fecha_nacimiento":"","sexo":"","caravana_madre":"","caravana_padre":"","peso_nac":"","caravana_cria":"","marca_cria":"","campo_madre":"","observaciones":""}]
+fecha_nacimiento: mantener el formato escrito (DD/MM/AAAA). Campos vacíos = "". No incluyas filas vacías.`
+  },
+  entore:{
+    title:'Resultado de Entore / Parición',
+    sheetName:'Resultado_Entore',
+    cols:['caravana_vaca','categoria','raza','resultado','observaciones'],
+    hdrs:['Caravana Vaca','Categoría','Raza','Resultado','Observaciones'],
+    type:'object',
+    prompt:`Leyendo PLANILLA DE CAMPO de resultado de entore/parición ganadera.
+Extrae el encabezado y todos los resultados. Retorna SOLO este JSON:
+{"encabezado":{"toro":"","periodo_inicio":"","periodo_fin":"","campo":"","temporada":""},"resultados":[{"caravana_vaca":"","categoria":"","raza":"","resultado":"","observaciones":""}]}
+"resultado" debe ser exactamente: parto, ternero_muerto, no_prenia o "" (vacío si □ sin marcar).
+Detecta la casilla marcada con ✓, ✗, tachado o relleno. No incluyas filas vacías.`
+  },
+  vacunacion:{
+    title:'Vacunación',
+    sheetName:'Vacunacion',
+    cols:['caravana','observaciones'],
+    hdrs:['N° Caravana','Observaciones'],
+    type:'object',
+    prompt:`Leyendo PLANILLA DE CAMPO de vacunación ganadera.
+Extrae encabezado del lote y SOLO las caravanas con ✓ marcado (vacunadas). Retorna SOLO este JSON:
+{"lote":{"numero":"","vacuna":"","laboratorio":"","dosis":"","campo":"","fecha":""},"animales":[{"caravana":"","observaciones":""}]}
+Solo incluir animales con casilla ✓ marcada.`
+  },
+  ventas:{
+    title:'Registro de Ventas',
+    sheetName:'Ventas',
+    cols:['caravana','categoria','fecha_venta','peso','precio','comprador','es_feria','local_feria','observaciones'],
+    hdrs:['N° Caravana','Categoría','Fecha Venta','Peso (kg)','Precio ($)','Comprador','Feria S/N','Local Feria','Observaciones'],
+    type:'array',
+    prompt:`Leyendo PLANILLA DE CAMPO de ventas ganaderas.
+Extrae TODOS los animales vendidos. Retorna SOLO JSON array:
+[{"caravana":"","categoria":"","fecha_venta":"","peso":"","precio":"","comprador":"","es_feria":"","local_feria":"","observaciones":""}]
+es_feria: "S" o "N". Campos vacíos = "". No incluyas filas vacías.`
+  },
+  manejo:{
+    title:'Manejo de Ganado — Cambio de Campo',
+    sheetName:'Manejo',
+    cols:['caravana','categoria','raza','campo_origen','campo_destino','observaciones'],
+    hdrs:['N° Caravana','Categoría','Raza','Campo Origen','Campo Destino','Observaciones'],
+    type:'array',
+    prompt:`Leyendo PLANILLA DE CAMPO de manejo de ganado / cambio de campo.
+Extrae TODOS los animales con datos. Retorna SOLO JSON array:
+[{"caravana":"","categoria":"","raza":"","campo_origen":"","campo_destino":"","observaciones":""}]
+Campos vacíos = "". No incluyas filas vacías.`
+  }
+};
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+(function(){
+  var k=localStorage.getItem('lp_api_key');
+  if(k){apiKey=k;document.getElementById('api-key').value=k;setKeySt(true);}
+})();
+
+// ── API KEY ───────────────────────────────────────────────────────────────────
+function saveKey(){
+  var k=document.getElementById('api-key').value.trim();
+  if(!k.startsWith('sk-ant-')){alert('La clave debe comenzar con sk-ant-');return;}
+  apiKey=k; localStorage.setItem('lp_api_key',k); setKeySt(true); checkReady();
+}
+function setKeySt(ok){
+  document.getElementById('key-st').innerHTML=ok
+    ?'<span style="color:var(--gm)">✓ Clave configurada</span>'
+    :'<span style="color:var(--rd)">✗ Clave no configurada</span>';
+}
+function toggleVis(){var i=document.getElementById('api-key');i.type=i.type==='password'?'text':'password';}
+
+// ── TYPE ─────────────────────────────────────────────────────────────────────
+function selType(el){
+  document.querySelectorAll('.t-btn').forEach(function(b){b.classList.remove('on');});
+  el.classList.add('on'); selT=el.dataset.t;
+}
+
+// ── PHOTOS ───────────────────────────────────────────────────────────────────
+function onDrop(e){e.preventDefault();document.getElementById('dz').classList.remove('drag');onFiles(e.dataTransfer.files);}
+function onFiles(files){
+  Array.from(files).forEach(function(f){
+    if(!f.type.startsWith('image/'))return;
+    var r=new FileReader();
+    r.onload=function(e){
+      var du=e.target.result;
+      photos.push({dataUrl:du,base64:du.split(',')[1],mediaType:f.type||'image/jpeg'});
+      renderThumbs(); checkReady();
+    };
+    r.readAsDataURL(f);
+  });
+}
+function renderThumbs(){
+  document.getElementById('thumbs').innerHTML=photos.map(function(p,i){
+    return'<div class="thumb"><img src="'+p.dataUrl+'"><button class="rm" onclick="rmPhoto('+i+')">×</button></div>';
+  }).join('');
+}
+function rmPhoto(i){photos.splice(i,1);renderThumbs();checkReady();}
+function checkReady(){document.getElementById('proc-btn').disabled=!(photos.length>0&&apiKey);}
+
+// ── PROCESS ──────────────────────────────────────────────────────────────────
+async function process(){
+  if(!apiKey){alert('Configure la clave API primero');return;}
+  if(!photos.length){alert('Suba al menos una foto');return;}
+  var sch=SCH[selT];
+  var btn=document.getElementById('proc-btn');
+  btn.disabled=true; btn.textContent='⏳ Procesando...';
+  document.getElementById('prog').style.display='block';
+  setProg(10); setLbl('Preparando imágenes...');
+  document.getElementById('res-card').style.display='none';
+  try{
+    var imgBlocks=photos.map(function(p){
+      return{type:'image',source:{type:'base64',media_type:p.mediaType,data:p.base64}};
+    });
+    setProg(20); setLbl('Enviando a Claude Vision...');
+    var resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key':apiKey,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:8096,
+        messages:[{role:'user',content:[
+          ...imgBlocks,
+          {type:'text',text:sch.prompt+'\n\nIMPORTANTE: Retorna SOLO el JSON puro, sin bloques markdown, sin explicaciones.'}
+        ]}]
+      })
+    });
+    setProg(75); setLbl('Procesando respuesta...');
+    if(!resp.ok){var e=await resp.json();throw new Error((e.error&&e.error.message)||'HTTP '+resp.status);}
+    var res=await resp.json();
+    var txt=res.content[0].text.trim().replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
+    setProg(90); setLbl('Generando tabla...');
+    extracted=JSON.parse(txt);
+    showResults(extracted, sch);
+    setProg(100); setLbl('');
+  }catch(e){
+    setLbl('');
+    document.getElementById('res-card').style.display='block';
+    document.getElementById('res-alert').innerHTML='<div class="alert a-err"><b>Error:</b> '+e.message+'<br><small>Verifique que la clave API sea correcta y la foto sea legible.</small></div>';
+    document.getElementById('res-enc').innerHTML='';
+    document.getElementById('res-summary').textContent='';
+    document.getElementById('res-tbl').innerHTML='';
+  }finally{
+    btn.disabled=false; btn.textContent='🤖 Leer planilla y extraer datos';
+    setTimeout(function(){document.getElementById('prog').style.display='none';setProg(0);},700);
+  }
+}
+function setProg(p){document.getElementById('prog-bar').style.width=p+'%';}
+function setLbl(t){document.getElementById('proc-lbl').textContent=t;}
+
+// ── SHOW RESULTS ─────────────────────────────────────────────────────────────
+function showResults(data, sch){
+  document.getElementById('res-card').style.display='block';
+  document.getElementById('res-alert').innerHTML='';
+  var rows, encHtml='';
+
+  if(selT==='entore'){
+    var enc=data.encabezado||{};
+    rows=data.resultados||[];
+    encHtml='<div class="enc-box">'
+      +'<div class="ef"><b>Toro:</b><span>'+(enc.toro||'—')+'</span></div>'
+      +'<div class="ef"><b>Período:</b><span>'+(enc.periodo_inicio||'—')+' al '+(enc.periodo_fin||'—')+'</span></div>'
+      +'<div class="ef"><b>Campo:</b><span>'+(enc.campo||'—')+'</span></div>'
+      +'<div class="ef"><b>Temporada:</b><span>'+(enc.temporada||'—')+'</span></div>'
+      +'</div>';
+  }else if(selT==='vacunacion'){
+    var lt=data.lote||{};
+    rows=data.animales||[];
+    encHtml='<div class="enc-box" style="background:var(--am);border-color:#FAC775">'
+      +'<div class="ef"><b>Lote N°:</b><span>'+(lt.numero||'—')+'</span></div>'
+      +'<div class="ef"><b>Vacuna:</b><span>'+(lt.vacuna||'—')+'</span></div>'
+      +'<div class="ef"><b>Laboratorio:</b><span>'+(lt.laboratorio||'—')+'</span></div>'
+      +'<div class="ef"><b>Dosis:</b><span>'+(lt.dosis||'—')+' ml</span></div>'
+      +'<div class="ef"><b>Campo:</b><span>'+(lt.campo||'—')+'</span></div>'
+      +'<div class="ef"><b>Fecha:</b><span>'+(lt.fecha||'—')+'</span></div>'
+      +'</div>';
+  }else{
+    rows=Array.isArray(data)?data:[];
+  }
+
+  document.getElementById('res-enc').innerHTML=encHtml;
+  var n=rows.length;
+  document.getElementById('res-summary').innerHTML=
+    '<span style="color:var(--gm);font-weight:700">✓ '+n+' registro'+(n!==1?'s':'')+' extraído'+(n!==1?'s':'')</span>'
+    +' &nbsp;<span style="color:var(--txt3);font-size:12px">— Puede editar cualquier celda antes de descargar</span>';
+
+  if(!n){
+    document.getElementById('res-tbl').innerHTML=
+      '<div class="alert a-warn">No se detectaron filas con datos. Verifique que la foto sea nítida y la planilla tenga datos completos.</div>';
+    document.getElementById('res-alert').innerHTML='';
+    return;
+  }
+
+  // Build editable table
+  var RESULT_OPTIONS=['','parto','ternero_muerto','no_prenia'];
+  var html='<div class="rtbl-wrap"><table class="rtbl"><thead><tr>'
+    +sch.hdrs.map(function(h){return'<th>'+h+'</th>';}).join('')+'</tr></thead><tbody>';
+  rows.forEach(function(row,ri){
+    html+='<tr>'+sch.cols.map(function(col,ci){
+      var v=row[col]!==undefined?String(row[col]):'';
+      if(col==='resultado'){
+        var cls=v==='parto'?'res-parto':v==='ternero_muerto'?'res-muerto':v==='no_prenia'?'res-nop':'res-pend';
+        var sel='<select class="'+cls+'" onchange="updCell('+ri+',\''+col+'\',this.value);this.className=this.value===\'parto\'?\'res-parto\':this.value===\'ternero_muerto\'?\'res-muerto\':this.value===\'no_prenia\'?\'res-nop\':\'res-pend\'">'
+          +RESULT_OPTIONS.map(function(o){
+            var lbl=o===''?'— Pendiente':o==='parto'?'✓ Parto':o==='ternero_muerto'?'✗ Ternero muerto':'○ No preñada';
+            return'<option value="'+o+'"'+(v===o?' selected':'')+'>'+lbl+'</option>';
+          }).join('')+'</select>';
+        return'<td>'+sel+'</td>';
+      }
+      return'<td><input value="'+v.replace(/"/g,'&quot;')+'" onchange="updCell('+ri+',\''+col+'\',this.value)"></td>';
+    }).join('')+'</tr>';
+  });
+  html+='</tbody></table></div>';
+  document.getElementById('res-tbl').innerHTML=html;
+  document.getElementById('res-alert').innerHTML='<div class="alert a-ok">Datos extraídos correctamente. Revise y edite si es necesario antes de descargar.</div>';
+}
+
+function updCell(ri, col, val){
+  var rows=selT==='entore'?(extracted.resultados||[]):selT==='vacunacion'?(extracted.animales||[]):extracted;
+  if(Array.isArray(rows)&&rows[ri]) rows[ri][col]=val;
+}
+
+// ── EXCEL DOWNLOAD ────────────────────────────────────────────────────────────
+function dlExcel(){
+  if(!extracted){alert('No hay datos extraídos');return;}
+  var sch=SCH[selT];
+  var wb=XLSX.utils.book_new();
+  var fecha=new Date().toISOString().slice(0,10).replace(/-/g,'');
+
+  function addSheet(name, hdrs, rows){
+    var data=[hdrs].concat(rows.map(function(r){
+      return sch.cols.map(function(c){
+        // for vacunacion schema has only 2 cols
+        var cols=SCH[selT].cols;
+        if(selT==='vacunacion') cols=['caravana','observaciones'];
+        return r[c]!==undefined?r[c]:'';
+      });
+    }));
+    var ws=XLSX.utils.aoa_to_sheet(data);
+    ws['!cols']=hdrs.map(function(){return{wch:20};});
+    // Style header row
+    hdrs.forEach(function(_,i){
+      var cellAddr=XLSX.utils.encode_cell({r:0,c:i});
+      if(!ws[cellAddr]) return;
+      ws[cellAddr].s={fill:{fgColor:{rgb:'1B2E1B'}},font:{bold:true,color:{rgb:'E4F0D4'}}};
+    });
+    XLSX.utils.book_append_sheet(wb,ws,name.slice(0,31));
+  }
+
+  if(selT==='entore'){
+    var enc=extracted.encabezado||{};
+    var encRows=[['DATOS DEL ENTORE',''],['Toro',enc.toro||''],['Período inicio',enc.periodo_inicio||''],
+      ['Período fin',enc.periodo_fin||''],['Campo',enc.campo||''],['Temporada',enc.temporada||'']];
+    var ws0=XLSX.utils.aoa_to_sheet(encRows);
+    ws0['!cols']=[{wch:20},{wch:30}];
+    XLSX.utils.book_append_sheet(wb,ws0,'Entore_Info');
+    addSheet('Resultado_Paricion',sch.hdrs,extracted.resultados||[]);
+  }else if(selT==='vacunacion'){
+    var lt=extracted.lote||{};
+    var ltRows=[['DATOS DEL LOTE',''],['N° Lote',lt.numero||''],['Vacuna',lt.vacuna||''],
+      ['Laboratorio',lt.laboratorio||''],['Dosis (ml)',lt.dosis||''],['Campo',lt.campo||''],['Fecha',lt.fecha||'']];
+    var ws0=XLSX.utils.aoa_to_sheet(ltRows);
+    ws0['!cols']=[{wch:20},{wch:30}];
+    XLSX.utils.book_append_sheet(wb,ws0,'Lote_Info');
+    var aniRows=(extracted.animales||[]).map(function(a){return[a.caravana||'',a.observaciones||''];});
+    var ws1=XLSX.utils.aoa_to_sheet([['N° Caravana','Observaciones']].concat(aniRows));
+    ws1['!cols']=[{wch:20},{wch:35}];
+    XLSX.utils.book_append_sheet(wb,ws1,'Animales_Vacunados');
+  }else{
+    var rows=Array.isArray(extracted)?extracted:[];
+    addSheet(sch.sheetName,sch.hdrs,rows);
+  }
+
+  XLSX.writeFile(wb,'ganaderia_'+selT+'_'+fecha+'.xlsx');
+}
+
+function clearAll(){
+  photos=[]; extracted=null;
+  renderThumbs();
+  document.getElementById('res-card').style.display='none';
+  checkReady();
+}
+</script>
+</body>
+</html>
